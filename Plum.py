@@ -1,7 +1,11 @@
 import vapoursynth as vs
-import math
+import mvmulti
 
 fmtc_args                 = dict(fulls=True, fulld=True)
+msuper_args               = dict(hpad=32, vpad=32, sharp=2, levels=0, chroma=False)
+manalyze_args             = dict(search=3, truemotion=False, trymany=True, levels=0, badrange=-24, divide=0, dct=0, chroma=False)
+mrecalculate_args         = dict(truemotion=False, search=3, smooth=1, divide=0, dct=0, chroma=False)
+mdegrain_args             = dict(plane=0)
 conv_args                 = dict(matrix=[1, 2, 1, 2, 4, 2, 1, 2, 1])
 deconv_args               = dict(line=0, wn=0.48, fr=25, scale=0.28)
 nnedi_args                = dict(field=1, dh=True, nns=4, qual=2, etype=1, nsize=0)
@@ -76,6 +80,19 @@ class helpers:
           nlm             = KNLMeansCL(pad, d=0, a=a, s=0, h=h, rclip=ref)
           clip            = Crop(nlm, a, a, a, a)
           return clip
+      def extremum_multi(src, radius, mode):
+          core            = vs.get_core()
+          SelectEvery     = core.std.SelectEvery
+          Expr            = core.std.Expr
+          clip            = SelectEvery(src, radius * 2 + 1, 0)
+          for i in range(1, radius * 2 + 1):
+              clip        = Expr([clip, SelectEvery(src, radius * 2 + 1, i)], "x y " + mode)
+          return clip
+      def clamp(src, bright_limit, dark_limit, overshoot, undershoot):
+          core            = vs.get_core()
+          Expr            = core.std.Expr
+          clip            = Expr([src, bright_limit, dark_limit], ["x y {os} + > y {os} + x ? z {us} - < z {us} - x ?".format(os=overshoot, us=undershoot)])
+          return clip
 
 class internal:
       def basic(src, iterate, a, h, deconv_radius, conv_strength, mode):
@@ -97,6 +114,37 @@ class internal:
              return clip
           else:
              return internal.basic(clip, iterate, a, h, deconv_radius, conv_strength, mode)
+      def final(src, super, radius, pel, sad, constants, cutoff):
+          core            = vs.get_core()
+          MSuper          = core.mvsf.Super
+          MAnalyze        = mvmulti.Analyze
+          MRecalculate    = mvmulti.Recalculate
+          MDegrainN       = mvmulti.DegrainN
+          MCompensate     = mvmulti.Compensate
+          Expr            = core.std.Expr
+          MakeDiff        = core.std.MakeDiff
+          MergeDiff       = core.std.MergeDiff
+          expression      = "{x} {y} - abs {lstr} / 1 {pstr} / pow {sstr} * {x} {y} - {x} {y} - abs 0.001 + / * {x} {y} - 2 pow {x} {y} - 2 pow {ldmp} + / * 256 / y +".format(lstr=constants[1], pstr=constants[2], sstr=constants[0], ldmp=constants[3], x="x 256 *", y="y 256 *")
+          blankdif        = Expr(src[0], "0.5")
+          supersoft       = MSuper(src[0], pelclip=super[0], rfilter=4, pel=pel, **msuper_args)
+          supersharp      = MSuper(src[0], pelclip=super[0], rfilter=2, pel=pel, **msuper_args)
+          superdif        = MSuper(src[1], pelclip=super[1], rfilter=2, pel=pel, **msuper_args)
+          superlimit      = MSuper(src[2], pelclip=super[2], rfilter=2, pel=pel, **msuper_args)
+          vmulti          = MAnalyze(supersoft, tr=radius, overlap=16, blksize=32, **manalyze_args)
+          vmulti          = MRecalculate(supersoft, vmulti, tr=radius, overlap=8, blksize=16, thsad=sad/2.0, **mrecalculate_args)
+          vmulti          = MRecalculate(supersharp, vmulti, tr=radius, overlap=4, blksize=8, thsad=sad/2.0, **mrecalculate_args)
+          vmulti          = MRecalculate(supersharp, vmulti, tr=radius, overlap=2, blksize=4, thsad=sad/2.0, **mrecalculate_args)
+          averaged_dif    = MDegrainN(blankdif, superdif, vmulti, tr=radius, thsad=10000.0, thscd1=10000.0, thscd2=255.0, **mdegrain_args)
+          compensated     = MCompensate(src[0], superlimit, vmulti, tr=radius, thsad=sad, thscd1=10000.0, thscd2=255.0)
+          bright_limit    = helpers.extremum_multi(compensated, radius, "max")
+          dark_limit      = helpers.extremum_multi(compensated, radius, "min")
+          averaged        = MergeDiff(src[0], averaged_dif)
+          clamped         = helpers.clamp(averaged, bright_limit, dark_limit, 0.0, 0.0)
+          amplified       = Expr([clamped, src[0]], expression)
+          low_frequency   = helpers.gauss(src[0], cutoff[0])
+          high_frequency  = MakeDiff(amplified, helpers.gauss(amplified, cutoff[1]))
+          clip            = MergeDiff(low_frequency, high_frequency)
+          return clip
 
 def Basic(src, iterate=3, a=[32, 1], h=64.0, deconv_radius=1, conv_strength=3.2, mode="deconvolution"):
     core                  = vs.get_core()
@@ -143,4 +191,9 @@ def Basic(src, iterate=3, a=[32, 1], h=64.0, deconv_radius=1, conv_strength=3.2,
     clip                  = internal.basic(src, iterate, a, h, deconv_radius, conv_strength, mode.lower())
     if mode.lower() == "deconvolution":
        clip               = MakeDiff(clip, src)
+    return clip
+
+def Final(src=[None, None, None], super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[1.64, 1.49, 1.272, None], cutoff=[10, 16]):
+    constants[3]          = constants[0] + 0.1 if constants[3] is None else constants[3]
+    clip                  = internal.final(src, super, radius, pel, sad, constants, cutoff)
     return clip
