@@ -95,6 +95,23 @@ class helpers:
           return clip
 
 class internal:
+      def super(src, pel):
+          core            = vs.get_core()
+          NNEDI           = core.nnedi3.nnedi3
+          MakeDiff        = core.std.MakeDiff
+          MergeDiff       = core.std.MergeDiff
+          Transpose       = core.std.Transpose
+          clip            = [None, None]
+          clip[0]         = Transpose(NNEDI(Transpose(NNEDI(src[0], **nnedi_args)), **nnedi_args))
+          if pel == 4:
+             clip[0]      = Transpose(NNEDI(Transpose(NNEDI(clip[0], **nnedi_args)), **nnedi_args))
+          if src[1] is not None:
+             src[1]       = MergeDiff(src[0], src[1])
+             clip[1]      = Transpose(NNEDI(Transpose(NNEDI(src[1], **nnedi_args)), **nnedi_args))
+             if pel == 4:
+                clip[1]   = Transpose(NNEDI(Transpose(NNEDI(clip[1], **nnedi_args)), **nnedi_args))
+             clip[0]      = MakeDiff(clip[1], clip[0])
+          return clip[0]
       def basic(src, iterate, a, h, deconv_radius, conv_strength, mode):
           core            = vs.get_core()
           Expr            = core.std.Expr
@@ -145,6 +162,38 @@ class internal:
           high_frequency  = MakeDiff(amplified, helpers.gauss(amplified, cutoff[1]))
           clip            = MergeDiff(low_frequency, high_frequency)
           return clip
+
+def Super(src, pel=4):
+    core                  = vs.get_core()
+    RGB2OPP               = core.bm3d.RGB2OPP
+    ShufflePlanes         = core.std.ShufflePlanes
+    SetFieldBased         = core.std.SetFieldBased
+    if not isinstance(src, list):
+       raise TypeError("Plum.Super: src has to be an array!")
+    elif len(src) != 2:
+       raise RuntimeError("Plum.Super: src has to contain 2 elements exactly!")
+    if not isinstance(src[0], vs.VideoNode):
+       raise TypeError("Plum.Super: src[0] has to be a video clip!")
+    elif src[0].format.sample_type != vs.FLOAT or src[0].format.bits_per_sample < 32:
+       raise TypeError("Plum.Super: the sample type of src[0] has to be single precision!")
+    if not isinstance(src[1], vs.VideoNode) and src[1] is not None:
+       raise TypeError("Plum.Super: src[1] has to be a video clip or None!")
+    elif src[1] is not None:
+       if src[1].format.id != vs.GRAYS:
+          raise RuntimeError("Plum.Super: corrupted basic estimation!")
+    if not isinstance(pel, int):
+       raise TypeError("Plum.Super: pel has to be an integer!")
+    elif pel != 2 and pel != 4:
+       raise RuntimeError("Plum.Super: pel has to be 2 or 4!")
+    src[0]                = SetFieldBased(src[0], 0)
+    src[1]                = SetFieldBased(src[1], 0) if src[1] is not None else None
+    colorspace            = src[0].format.color_family
+    if colorspace == vs.RGB:
+       src[0]             = RGB2OPP(src[0], 1)
+    if colorspace != vs.GRAY:
+       src[0]             = ShufflePlanes(src[0], 0, vs.GRAY)
+    clip                  = internal.super(src, pel)
+    return clip
 
 def Basic(src, iterate=3, a=[32, 1], h=64.0, deconv_radius=1, conv_strength=3.2, mode="deconvolution"):
     core                  = vs.get_core()
@@ -264,3 +313,4 @@ def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[
     if colorspace == vs.RGB:
        clip               = OPP2RGB(clip, 1)
     return clip
+    
