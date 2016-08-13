@@ -193,7 +193,74 @@ def Basic(src, iterate=3, a=[32, 1], h=64.0, deconv_radius=1, conv_strength=3.2,
        clip               = MakeDiff(clip, src)
     return clip
 
-def Final(src=[None, None, None], super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[1.64, 1.49, 1.272, None], cutoff=[10, 16]):
+def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[1.64, 1.49, 1.272, None], cutoff=[10, 16]):
+    core                  = vs.get_core()
+    RGB2OPP               = core.bm3d.RGB2OPP
+    OPP2RGB               = core.bm3d.OPP2RGB
+    ShufflePlanes         = core.std.ShufflePlanes
+    SetFieldBased         = core.std.SetFieldBased
+    if not isinstance(src, list):
+       raise TypeError("Plum.Final: src has to be an array!")
+    elif len(src) != 3:
+       raise RuntimeError("Plum.Final: src has to contain 3 elements exactly!")
+    elif not isinstance(src[0], vs.VideoNode) or not isinstance(src[1], vs.VideoNode) or not isinstance(src[2], vs.VideoNode):
+       raise TypeError("Plum.Final: elements in src must be video clips!")
+    elif src[0].format.sample_type != vs.FLOAT or src[0].format.bits_per_sample < 32:
+       raise TypeError("Plum.Final: the sample type of src[0] has to be single precision!")
+    elif src[1].format.id != vs.GRAYS or src[2].format.id != vs.GRAYS:
+       raise RuntimeError("Plum.Final: corrupted basic estimation!")
+    if not isinstance(super, list):
+       raise TypeError("Plum.Final: super has to be an array!")
+    elif len(super) != 3:
+       raise RuntimeError("Plum.Final: super has to contain 3 elements exactly!")
+    for i in range(3):
+        if not isinstance(super[i], vs.VideoNode) and super[i] is not None:
+           raise TypeError("Plum.Final: elements in super must be video clips or None!")
+        elif super[i] is not None:
+           if super[i].format.id != vs.GRAYS:
+              raise RuntimeError("Plum.Final: corrupted super clips!")
+    if not isinstance(radius, int):
+       raise TypeError("Plum.Final: radius has to be an integer!")
+    elif radius < 1:
+       raise RuntimeError("Plum.Final: radius has to be greater than 0!")
+    if not isinstance(pel, int):
+       raise TypeError("Plum.Final: pel has to be an integer!")
+    elif pel != 1 and pel != 2 and pel != 4:
+       raise RuntimeError("Plum.Final: pel has to be 1, 2 or 4!")
+    if not isinstance(sad, float) and not isinstance(sad, int):
+       raise TypeError("Plum.Final: sad has to be a real number!")
+    elif sad <= 0:
+       raise RuntimeError("Plum.Final: sad has to be greater than 0!")
+    if not isinstance(constants, list):
+       raise TypeError("Plum.Final: constants parameter has to be an array!")
+    elif len(constants) != 4:
+       raise RuntimeError("Plum.Final: constants parameter has to contain 4 elements exactly!")
+    for i in range(3):
+        if not isinstance(constants[i], float) and not isinstance(constants[i], int):
+           raise TypeError("Plum.Final: elements in constants must be real numbers!")
+    if not isinstance(constants[3], float) and not isinstance(constants[3], int) and constants[3] is not None:
+       raise TypeError("Plum.Final: constants[3] has to be a real number or None!")
+    if not isinstance(cutoff, list):
+       raise TypeError("Plum.Final: cutoff has to be an array!")
+    elif len(cutoff) != 2:
+       raise RuntimeError("Plum.Final: cutoff has to contain 2 elements exactly!")
+    elif not isinstance(cutoff[0], int) or not isinstance(cutoff[1], int):
+       raise TypeError("Plum.Final: elements in cutoff must be integers!")
+    if cutoff[0] < 1 or cutoff[1] < 1 or cutoff[0] > 100 or cutoff[1] > 100 or cutoff[0] > cutoff[1]:
+       raise RuntimeError("Plum.Final: elements in cutoff must fall in(0, 100], and cutoff[1] should be no less than cutoff[0]!")
     constants[3]          = constants[0] + 0.1 if constants[3] is None else constants[3]
+    for i in range(3):
+        src[i]            = SetFieldBased(src[i], 0)
+        super[i]          = SetFieldBased(super[i], 0) if super[i] is not None else None
+    colorspace            = src[0].format.color_family
+    if colorspace == vs.RGB:
+       src[0]             = RGB2OPP(src[0], 1)
+    if colorspace != vs.GRAY:
+       src_color          = src[0]
+       src[0]             = ShufflePlanes(src[0], 0, vs.GRAY)
     clip                  = internal.final(src, super, radius, pel, sad, constants, cutoff)
+    if colorspace != vs.GRAY:
+       clip               = ShufflePlanes([clip, src_color], [0, 1, 2], vs.YUV)
+    if colorspace == vs.RGB:
+       clip               = OPP2RGB(clip, 1)
     return clip
