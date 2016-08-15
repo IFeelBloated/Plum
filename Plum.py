@@ -8,23 +8,23 @@ mrecalculate_args         = dict(truemotion=False, search=3, smooth=1, divide=0,
 mdegrain_args             = dict(plane=0)
 conv_args                 = dict(matrix=[1, 2, 1, 2, 4, 2, 1, 2, 1])
 deconv_args               = dict(line=0, wn=0.48, fr=25, scale=0.28)
+dfttest_args              = dict(smode=0, sosize=0, tbsize=1, tosize=0, tmode=0)
 nnedi_args                = dict(field=1, dh=True, nns=4, qual=2, etype=1, nsize=0)
 
 class helpers:
-      def gauss(src, p):
-          core            = vs.get_core()
-          Resample        = core.fmtc.resample
-          upsmp           = Resample(src, src.width * 2, src.height * 2, kernel="gauss", a1=100, **fmtc_args)
-          clip            = Resample(upsmp, src.width, src.height, kernel="gauss", a1=p, **fmtc_args)
-          return clip
       def cutoff(low, hi, p):
           core            = vs.get_core()
+          Resample        = core.fmtc.resample
           MakeDiff        = core.std.MakeDiff
           MergeDiff       = core.std.MergeDiff
-          hif             = MakeDiff(hi, helpers.gauss(hi, p))
-          clip            = MergeDiff(helpers.gauss(low, p), hif)
+          def inline(src):
+              upsmp       = Resample(src, src.width * 2, src.height * 2, kernel="gauss", a1=100, **fmtc_args)
+              clip        = Resample(upsmp, src.width, src.height, kernel="gauss", a1=p, **fmtc_args)
+              return clip
+          hif             = MakeDiff(hi, inline(hi))
+          clip            = MergeDiff(inline(low), hif)
           return clip
-      def padding(src, left=0, right=0, top=0, bottom=0):
+      def padding(src, left, right, top, bottom):
           core            = vs.get_core()
           Resample        = core.fmtc.resample
           w               = src.width
@@ -131,8 +131,9 @@ class internal:
              return clip
           else:
              return internal.basic(clip, iterate, a, h, deconv_radius, conv_strength, mode)
-      def final(src, super, radius, pel, sad, constants, cutoff):
+      def final(src, super, radius, pel, sad, constants, attenuate_window, attenuate, cutoff):
           core            = vs.get_core()
+          DFTTest         = core.dfttest.DFTTest
           MSuper          = core.mvsf.Super
           MAnalyze        = mvmulti.Analyze
           MRecalculate    = mvmulti.Recalculate
@@ -158,9 +159,10 @@ class internal:
           averaged        = MergeDiff(src[0], averaged_dif)
           clamped         = helpers.clamp(averaged, bright_limit, dark_limit, 0.0, 0.0)
           amplified       = Expr([clamped, src[0]], expression)
-          low_frequency   = helpers.gauss(src[0], cutoff[0])
-          high_frequency  = MakeDiff(amplified, helpers.gauss(amplified, cutoff[1]))
-          clip            = MergeDiff(low_frequency, high_frequency)
+          dif             = MakeDiff(amplified, src[0])
+          dif             = DFTTest(dif, sbsize=attenuate_window, sstring=attenuate, **dfttest_args)
+          sharp           = MergeDiff(src[0], dif)
+          clip            = helpers.cutoff(src[0], sharp, cutoff)
           return clip
 
 def Super(src, pel=4):
@@ -242,7 +244,8 @@ def Basic(src, iterate=3, a=[32, 1], h=64.0, deconv_radius=1, conv_strength=3.2,
        clip               = MakeDiff(clip, src)
     return clip
 
-def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[1.64, 1.49, 1.272, None], cutoff=[10, 16]):
+def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[1.64, 1.49, 1.272, None], \
+          attenuate_window=9, attenuate="0.0:1024.0 0.16:1024.0 0.32:1024.0 0.48:128.0 0.56:0.0 1.0:0.0", cutoff=12):
     core                  = vs.get_core()
     RGB2OPP               = core.bm3d.RGB2OPP
     OPP2RGB               = core.bm3d.OPP2RGB
@@ -289,14 +292,16 @@ def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[
            raise TypeError("Plum.Final: elements in constants must be real numbers!")
     if not isinstance(constants[3], float) and not isinstance(constants[3], int) and constants[3] is not None:
        raise TypeError("Plum.Final: constants[3] has to be a real number or None!")
-    if not isinstance(cutoff, list):
-       raise TypeError("Plum.Final: cutoff has to be an array!")
-    elif len(cutoff) != 2:
-       raise RuntimeError("Plum.Final: cutoff has to contain 2 elements exactly!")
-    elif not isinstance(cutoff[0], int) or not isinstance(cutoff[1], int):
-       raise TypeError("Plum.Final: elements in cutoff must be integers!")
-    if cutoff[0] < 1 or cutoff[1] < 1 or cutoff[0] > 100 or cutoff[1] > 100 or cutoff[0] > cutoff[1]:
-       raise RuntimeError("Plum.Final: elements in cutoff must fall in(0, 100], and cutoff[1] should be no less than cutoff[0]!")
+    if not isinstance(attenuate_window, int):
+       raise TypeError("Plum.Final: attenuate_window has to be an integer!")
+    elif attenuate_window < 1 or attenuate_window % 2 != 1:
+       raise RuntimeError("Plum.Final: attenuate_window has to be a positive odd integer!")
+    if not isinstance(attenuate, str):
+       raise TypeError("Plum.Final: attenuate has to be a string!")
+    if not isinstance(cutoff, int):
+       raise TypeError("Plum.Final: cutoff has to be an integer!")
+    elif cutoff < 1 or cutoff > 100:
+       raise RuntimeError("Plum.Final: cutoff must fall in(0, 100]!")
     constants[3]          = constants[0] + 0.1 if constants[3] is None else constants[3]
     for i in range(3):
         src[i]            = SetFieldBased(src[i], 0)
@@ -307,10 +312,9 @@ def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[
     if colorspace != vs.GRAY:
        src_color          = src[0]
        src[0]             = ShufflePlanes(src[0], 0, vs.GRAY)
-    clip                  = internal.final(src, super, radius, pel, sad, constants, cutoff)
+    clip                  = internal.final(src, super, radius, pel, sad, constants, attenuate_window, attenuate, cutoff)
     if colorspace != vs.GRAY:
        clip               = ShufflePlanes([clip, src_color], [0, 1, 2], vs.YUV)
     if colorspace == vs.RGB:
        clip               = OPP2RGB(clip, 1)
     return clip
-    
