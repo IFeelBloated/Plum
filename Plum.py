@@ -131,7 +131,7 @@ class internal:
              return clip
           else:
              return internal.basic(clip, iterate, a, h, deconv_radius, conv_strength, mode)
-      def final(src, super, radius, pel, sad, constants, attenuate_window, attenuate, cutoff):
+      def final(src, super, radius, pel, sad, strength, constants, attenuate_window, attenuate, cutoff):
           core            = vs.get_core()
           DFTTest         = core.dfttest.DFTTest
           MSuper          = core.mvsf.Super
@@ -142,7 +142,7 @@ class internal:
           Expr            = core.std.Expr
           MakeDiff        = core.std.MakeDiff
           MergeDiff       = core.std.MergeDiff
-          expression      = "{x} {y} - abs {lstr} / 1 {pstr} / pow {sstr} * {x} {y} - {x} {y} - abs 0.001 + / * {x} {y} - 2 pow {x} {y} - 2 pow {ldmp} + / * 256 / y +".format(lstr=constants[1], pstr=constants[2], sstr=constants[0], ldmp=constants[3], x="x 256 *", y="y 256 *")
+          expression      = "{x} {y} - abs {lstr} / 1 {pstr} / pow {sstr} * {x} {y} - {x} {y} - abs 0.001 + / * {x} {y} - 2 pow {x} {y} - 2 pow {ldmp} + / * 256 / y +".format(lstr=constants[0], pstr=constants[1], sstr=strength, ldmp=constants[2], x="x 256 *", y="y 256 *")
           blankdif        = Expr(src[0], "0.5")
           supersoft       = MSuper(src[0], pelclip=super[0], rfilter=4, pel=pel, **msuper_args)
           supersharp      = MSuper(src[0], pelclip=super[0], rfilter=2, pel=pel, **msuper_args)
@@ -244,7 +244,7 @@ def Basic(src, iterate=3, a=[32, 1], h=64.0, deconv_radius=1, conv_strength=3.2,
        clip               = MakeDiff(clip, src)
     return clip
 
-def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[1.64, 1.49, 1.272, None], \
+def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, strength=1.64, constants=[1.49, 1.272, None], \
           attenuate_window=9, attenuate="0.0:1024.0 0.16:1024.0 0.32:1024.0 0.48:128.0 0.56:0.0 1.0:0.0", cutoff=12):
     core                  = vs.get_core()
     RGB2OPP               = core.bm3d.RGB2OPP
@@ -283,15 +283,19 @@ def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[
        raise TypeError("Plum.Final: sad has to be a real number!")
     elif sad <= 0:
        raise RuntimeError("Plum.Final: sad has to be greater than 0!")
+    if not isinstance(strength, float) and not isinstance(strength, int):
+       raise TypeError("Plum.Final: strength has to be a real number!")
+    elif strength <= 0:
+       raise RuntimeError("Plum.Final: strength has to be greater than 0!")
     if not isinstance(constants, list):
        raise TypeError("Plum.Final: constants parameter has to be an array!")
-    elif len(constants) != 4:
-       raise RuntimeError("Plum.Final: constants parameter has to contain 4 elements exactly!")
-    for i in range(3):
+    elif len(constants) != 3:
+       raise RuntimeError("Plum.Final: constants parameter has to contain 3 elements exactly!")
+    for i in range(2):
         if not isinstance(constants[i], float) and not isinstance(constants[i], int):
            raise TypeError("Plum.Final: elements in constants must be real numbers!")
-    if not isinstance(constants[3], float) and not isinstance(constants[3], int) and constants[3] is not None:
-       raise TypeError("Plum.Final: constants[3] has to be a real number or None!")
+    if not isinstance(constants[2], float) and not isinstance(constants[2], int) and constants[2] is not None:
+       raise TypeError("Plum.Final: constants[2] has to be a real number or None!")
     if not isinstance(attenuate_window, int):
        raise TypeError("Plum.Final: attenuate_window has to be an integer!")
     elif attenuate_window < 1 or attenuate_window % 2 != 1:
@@ -302,7 +306,7 @@ def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[
        raise TypeError("Plum.Final: cutoff has to be an integer!")
     elif cutoff < 1 or cutoff > 100:
        raise RuntimeError("Plum.Final: cutoff must fall in(0, 100]!")
-    constants[3]          = constants[0] + 0.1 if constants[3] is None else constants[3]
+    constants[2]          = strength + 0.1 if constants[2] is None else constants[2]
     for i in range(3):
         src[i]            = SetFieldBased(src[i], 0)
         super[i]          = SetFieldBased(super[i], 0) if super[i] is not None else None
@@ -312,7 +316,7 @@ def Final(src, super=[None, None, None], radius=6, pel=4, sad=400.0, constants=[
     if colorspace != vs.GRAY:
        src_color          = src[0]
        src[0]             = ShufflePlanes(src[0], 0, vs.GRAY)
-    clip                  = internal.final(src, super, radius, pel, sad, constants, attenuate_window, attenuate, cutoff)
+    clip                  = internal.final(src, super, radius, pel, sad, strength, constants, attenuate_window, attenuate, cutoff)
     if colorspace != vs.GRAY:
        clip               = ShufflePlanes([clip, src_color], [0, 1, 2], vs.YUV)
     if colorspace == vs.RGB:
