@@ -28,6 +28,7 @@ Plum is a sharpening/blind deconvolution suite with certain advanced features li
 
 ## Notes
 - Only Y will be processed when the input is YUV, UV will be simply copied from the input
-- RGB input will be converted to an opponent color space(YUV alike) and only luminance will be processed still
+- RGB input will be converted to an opponent color space(YUV alike) and only luma will be processed still
+- **NO** scene change policy provided, take [Wobbly](https://github.com/dubhater/Wobbly) and cut each scene out and process them individually
 - **QUALITY**: cutting edge
 - **PERFORMANCE**: close to abysmal
