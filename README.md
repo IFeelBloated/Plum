@@ -53,7 +53,7 @@ workflow:
 - shrink the result down by 1 pixel
 - repeat all the steps above a few times
 - do another Non-Local Errors filtering to remove all residual ringing. (ringing inherited from the source clip)
-A- apply a cutoff filter to restore low frequency components.
+- apply a cutoff filter to restore low frequency components.
 
 ```python
 Basic(src, strength=6.4, a=32, h=64.0, radius=1, wn=0.48, scale=0.28, cutoff=32)
