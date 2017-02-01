@@ -228,7 +228,7 @@ def Basic(src, strength=6.4, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28,
     del core
     return clip
 
-def Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64, strength=2.00, constants=[1.49, 1.272, None], cutoff=24):
+def Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64, strength=1.80, constants=[1.49, 1.272, None], cutoff=24):
     if not isinstance(src, list):
        raise TypeError("Plum.Final: src has to be an array!")
     elif len(src) != 2:
