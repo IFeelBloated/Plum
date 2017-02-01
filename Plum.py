@@ -54,10 +54,10 @@ class get_core:
           clip               = self.Resample(src, w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom, kernel="point", **fmtc_args)
           return clip
 
-      def Deconvolution(self, src, radius, wn, fr, scale, cutoff):
+      def Deconvolution(self, src, radius, wn, fr, scale):
           src                = self.Pad(src, radius+fr, radius+fr, radius+fr, radius+fr)
           sharp              = self.FQSharp(src, x=radius, y=radius, wn=wn, fr=fr, scale=scale, **deconvolution_args)
-          sharp              = self.CutOff(src, sharp, cutoff)
+          sharp              = self.CutOff(src, sharp, 1)
           clip               = self.Crop(sharp, radius+fr, radius+fr, radius+fr, radius+fr)
           return clip
 
@@ -102,16 +102,21 @@ class internal:
       def basic(core, src, strength, a, h, radius, wn, scale, cutoff):
           c1                 = 0.0980468750214585389567894354907
           c2                 = 0.0124360171036224062543798508968
-          h_array            = [h]
-          h_array           += [c1 * h * strength * (1.0 - math.exp(-1.0 / (c1 * strength)))]
+          h                 += [c1 * h[1] * strength * (1.0 - math.exp(-1.0 / (c1 * strength)))]
           cutoff_array       = [cutoff]
           cutoff_array      += [int(max(1.0, c2 * math.pow(cutoff, 2.0) * math.log(1.0 + 1.0 / (c2 * cutoff))) + 0.5)]
           strength_floor     = math.floor(strength)
           strength_ceil      = math.ceil(strength)
           def inline(src):
-              sharp          = core.Deconvolution(src, radius, wn, int(a / 2 + 0.5), scale, cutoff_array[0])
-              sharp          = core.NLError(src, a, 0.001, sharp)
-              local_error    = core.NLError(src, radius, h_array[0], src)
+              sharp          = core.Deconvolution(src, radius, wn, int(a / 2 + 0.5), scale)
+              sharp          = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(sharp, **nnedi_args)), **nnedi_args))
+              ref            = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(src, **nnedi_args)), **nnedi_args))
+              sharp          = core.NLError(ref, a, h[0], sharp)
+              dif            = core.MakeDiff(sharp, ref)
+              dif            = core.Resample(dif, src.width, src.height, sx=-0.5, sy=-0.5, kernel="gauss", a1=100)
+              sharp          = core.MergeDiff(src, dif)
+              sharp          = core.CutOff(src, sharp, cutoff_array[0])
+              local_error    = core.NLError(src, radius, h[1], src)
               local_limit    = core.MergeDiff(src, core.MakeDiff(src, local_error))
               limited        = core.Expr([sharp, local_limit, src], ["x z - abs y z - abs > y x ?"])
               clip           = core.Shrink(limited)
@@ -122,7 +127,7 @@ class internal:
           if strength_floor != strength_ceil:
              sharp_ceil      = inline(sharp)
              sharp           = core.Merge(sharp, sharp_ceil, strength - strength_floor)
-          sharp_nr           = core.NLError(sharp, a, h_array[1], sharp)
+          sharp_nr           = core.NLError(sharp, a, h[2], sharp)
           clip               = core.CutOff(sharp, sharp_nr, cutoff_array[1])
           return clip
 
@@ -180,7 +185,7 @@ def Super(src, pel=4):
     del core
     return clip
 
-def Basic(src, strength=6.4, a=32, h=64.0, radius=1, wn=0.48, scale=0.28, cutoff=32):
+def Basic(src, strength=6.4, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28, cutoff=32):
     if not isinstance(src, vs.VideoNode):
        raise TypeError("Plum.Basic: src has to be a video clip!")
     elif src.format.sample_type != vs.FLOAT or src.format.bits_per_sample < 32:
@@ -191,10 +196,15 @@ def Basic(src, strength=6.4, a=32, h=64.0, radius=1, wn=0.48, scale=0.28, cutoff
        raise RuntimeError("Plum.Basic: strength has to be greater than 0.0!")
     if not isinstance(a, int):
        raise TypeError("Plum.Basic: a has to be an integer!")
-    if not isinstance(h, float) and not isinstance(h, int):
-       raise TypeError("Plum.Basic: h has to be a real number!")
-    elif h <= 0:
-       raise RuntimeError("Plum.Basic: h has to be greater than 0!")
+    if not isinstance(h, list):
+       raise TypeError("Plum.Basic: h has to be an array!")
+    elif len(h) != 2:
+       raise RuntimeError("Plum.Basic: h has to contain 2 elements exactly!")
+    for i in range(2):
+        if not isinstance(h[i], float) and not isinstance(h[i], int):
+           raise TypeError("Plum.Basic: elements in h must be real numbers!")
+        elif h[i] <= 0:
+           raise RuntimeError("Plum.Basic: elements in h must be greater than 0!")
     if not isinstance(radius, int):
        raise TypeError("Plum.Basic: radius has to be an integer!")
     elif radius < 1:
