@@ -74,11 +74,11 @@ class get_core:
           clip               = self.MergeDiff(src, dif)
           return clip
 
-      def NLError(self, src, a, h, ref):
-          pad                = self.AddBorders(src, a, a, a, a)
-          ref                = self.AddBorders(ref, a, a, a, a)
-          nlm                = self.KNLMeansCL(pad, d=0, a=a, s=0, h=h, rclip=ref)
-          clip               = self.Crop(nlm, a, a, a, a)
+      def NLMeans(self, src, a, s, h, rclip):
+          pad                = self.AddBorders(src, a+s, a+s, a+s, a+s)
+          rclip              = self.AddBorders(rclip, a+s, a+s, a+s, a+s) if rclip is not None else None
+          nlm                = self.KNLMeansCL(pad, d=0, a=a, s=s, h=h, rclip=rclip)
+          clip               = self.Crop(nlm, a+s, a+s, a+s, a+s)
           return clip
 
       def TemporalExtremum(self, src, radius, mode):
@@ -102,7 +102,10 @@ class internal:
       def basic(core, src, strength, a, h, radius, wn, scale, cutoff):
           c1                 = 0.0980468750214585389567894354907
           c2                 = 0.0124360171036224062543798508968
+          c3                 = 34.596639347653467565860120972079
+          c4                 = 0.2310854446174290294918410156489
           h                 += [c1 * h[1] * strength * (1.0 - math.exp(-1.0 / (c1 * strength)))]
+          h                 += [c3 * math.exp(1.0 / math.pow(h[2], c4)) - c3]
           cutoff_array       = [cutoff]
           cutoff_array      += [int(max(1.0, c2 * math.pow(cutoff, 2.0) * math.log(1.0 + 1.0 / (c2 * cutoff))) + 0.5)]
           strength_floor     = math.floor(strength)
@@ -111,12 +114,12 @@ class internal:
               sharp          = core.Deconvolution(src, radius, wn, int(a / 2 + 0.5), scale)
               sharp          = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(sharp, **nnedi_args)), **nnedi_args))
               ref            = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(src, **nnedi_args)), **nnedi_args))
-              sharp          = core.NLError(ref, a, h[0], sharp)
+              sharp          = core.NLMeans(ref, a, 0, h[0], sharp)
               dif            = core.MakeDiff(sharp, ref)
               dif            = core.Resample(dif, src.width, src.height, sx=-0.5, sy=-0.5, kernel="gauss", a1=100)
               sharp          = core.MergeDiff(src, dif)
               sharp          = core.CutOff(src, sharp, cutoff_array[0])
-              local_error    = core.NLError(src, radius, h[1], src)
+              local_error    = core.NLMeans(src, radius, 0, h[1], src)
               local_limit    = core.MergeDiff(src, core.MakeDiff(src, local_error))
               limited        = core.Expr([sharp, local_limit, src], ["x z - abs y z - abs > y x ?"])
               clip           = core.Shrink(limited)
@@ -127,8 +130,13 @@ class internal:
           if strength_floor != strength_ceil:
              sharp_ceil      = inline(sharp)
              sharp           = core.Merge(sharp, sharp_ceil, strength - strength_floor)
-          sharp_nr           = core.NLError(sharp, a, h[2], sharp)
-          clip               = core.CutOff(sharp, sharp_nr, cutoff_array[1])
+          sharp_nr           = core.NLMeans(sharp, a, 0, h[2], sharp)
+          sharp_nr           = core.CutOff(sharp, sharp_nr, cutoff_array[1])
+          dif                = core.MakeDiff(sharp, sharp_nr)
+          dif                = core.NLMeans(dif, a, 1, h[3], sharp_nr)
+          clip               = core.MergeDiff(sharp_nr, dif)
+          for i in range(2):
+              h.pop()
           return clip
 
       def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff):
