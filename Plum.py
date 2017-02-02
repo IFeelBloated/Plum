@@ -140,7 +140,7 @@ class internal:
           return clip
 
       def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff):
-          super_old          = super
+          super_old          = super[:]
           constant           = 0.0009948813682897925944723492342
           me_sad             = constant * math.pow(sad, 2.0) * math.log(1.0 + 1.0 / (constant * sad))
           expression         = "{x} {y} - abs {lstr} / 1 {pstr} / pow {sstr} * {x} {y} - {x} {y} - abs 0.001 + / * {x} {y} - 2 pow {x} {y} - 2 pow {ldmp} + / * 256 / y +".format(lstr=constants[0], pstr=constants[1], sstr=strength, ldmp=constants[2], x="x 256 *", y="y 256 *")
