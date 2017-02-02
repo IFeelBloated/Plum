@@ -1,7 +1,6 @@
 import vapoursynth as vs
 import mvmulti
 import math
-import copy
 
 fmtc_args                    = dict(fulls=True, fulld=True)
 msuper_args                  = dict(hpad=0, vpad=0, sharp=2, levels=0, chroma=False)
@@ -141,7 +140,6 @@ class internal:
           return clip
 
       def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff):
-          super_old          = copy.copy(super)
           constant           = 0.0009948813682897925944723492342
           me_sad             = constant * math.pow(sad, 2.0) * math.log(1.0 + 1.0 / (constant * sad))
           expression         = "{x} {y} - abs {lstr} / 1 {pstr} / pow {sstr} * {x} {y} - {x} {y} - abs 0.001 + / * {x} {y} - 2 pow {x} {y} - 2 pow {ldmp} + / * 256 / y +".format(lstr=constants[0], pstr=constants[1], sstr=strength, ldmp=constants[2], x="x 256 *", y="y 256 *")
@@ -173,7 +171,7 @@ class internal:
           clamped            = core.Clamp(averaged, bright_limit, dark_limit, 0.0, 0.0)
           amplified          = core.Expr([clamped, src[0]], expression)
           clip               = core.CutOff(src[0], amplified, cutoff)
-          super              = super_old
+          super.pop()
           return clip
 
 def Super(src, pel=4):
