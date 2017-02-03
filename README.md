@@ -108,18 +108,18 @@ ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)])
 ```
 ![](http://i.imgur.com/NDPXF8Z.png)
-![](http://i.imgur.com/QGWWJrl.png)
+![]()
 - B
 ```python
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=8)
 ```
 ![](http://i.imgur.com/meLK9cJ.png)
-![](http://i.imgur.com/DMCokuL.png)
+![]()
 - C
 ```python
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=12)
 ```
 ![](http://i.imgur.com/tdgeiu2.png)
-![](http://i.imgur.com/h5SgcVM.png)
+![]()
