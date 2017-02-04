@@ -121,5 +121,5 @@ clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=8)
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=12)
 ```
-![](http://i.imgur.com/aFoZDoF.png)
+![]()
 ![]()
