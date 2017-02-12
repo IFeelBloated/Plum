@@ -91,6 +91,10 @@ class get_core:
           clip               = self.Expr([src, bright_limit, dark_limit], "x y {os} + > y {os} + x ? z {us} - < z {us} - x ?".format(os=overshoot, us=undershoot))
           return clip
 
+      def XYClosest(self, src1, src2, ref):
+          clip               = self.Expr([src1, src2, ref], "x z - abs y z - abs > y x ?")
+          return clip
+
 class internal:
       def super(core, src, pel):
           src                = core.Pad(src, 128, 128, 128, 128)
@@ -161,6 +165,7 @@ class internal:
           vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=2, blksize=4, thsad=me_sad, **mrecalculate_args)
           vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=1, blksize=2, thsad=me_sad, **mrecalculate_args)
           averaged_dif       = core.MDegrainN(blankdif, superdif, vmulti, tr=radius, **mdegrain_args)
+          averaged_dif       = core.XYClosest(averaged_dif, src[1], blankdif)
           compensated        = core.MCompensate(src[0], superflex, vmulti, tr=radius, thsad=sad, **mcompensate_args)
           src[0]             = core.Crop(src[0], 128, 128, 128, 128)
           averaged_dif       = core.Crop(averaged_dif, 128, 128, 128, 128)
