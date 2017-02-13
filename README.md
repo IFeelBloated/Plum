@@ -54,7 +54,6 @@ workflow:
 - repeat all steps above a few times
 - do another Non-Local Errors filtering to remove all residual ringing. (ringing inherited from the source clip)
 - apply a cutoff filter to restore low frequency components.
-- refine the result with NLMeans to remove possible artifacts caused by Non-Local Errors 
 
 ```python
 Basic(src, strength=6.4, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28, cutoff=32)
@@ -108,18 +107,18 @@ ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)])
 ```
 ![](http://i.imgur.com/NDPXF8Z.png)
-![](http://i.imgur.com/UFU0hfZ.png)
+![]()
 - B
 ```python
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=8)
 ```
 ![](http://i.imgur.com/meLK9cJ.png)
-![](http://i.imgur.com/sSOhZUW.png)
+![]()
 - C
 ```python
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=16)
 ```
 ![](http://i.imgur.com/rSN0rtG.png)
-![](http://i.imgur.com/APUf74R.png)
+![]()
