@@ -113,7 +113,7 @@ clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)])
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=8)
 ```
-![](http://i.imgur.com/Rap4jLa.png)
+![](http://i.imgur.com/qY6VnVG.png)
 ![](http://i.imgur.com/90Bh02p.png)
 - C
 ```python
