@@ -14,30 +14,29 @@ nnedi_args                   = dict(field=1, dh=True, nns=4, qual=2, etype=1, ns
 
 class get_core:
       def __init__(self):
-          self.core          = vs.get_core()
-          self.MSuper        = self.core.mvsf.Super
+          self.MSuper        = vs.core.mvsf.Super
           self.MAnalyze      = mvmulti.Analyze
           self.MRecalculate  = mvmulti.Recalculate
           self.MDegrainN     = mvmulti.DegrainN
           self.MCompensate   = mvmulti.Compensate
-          self.RGB2OPP       = self.core.bm3d.RGB2OPP
-          self.OPP2RGB       = self.core.bm3d.OPP2RGB
-          self.KNLMeansCL    = self.core.knlm.KNLMeansCL
-          self.NNEDI         = self.core.nnedi3.nnedi3
-          self.FQSharp       = self.core.vcfreq.Sharp
-          self.Resample      = self.core.fmtc.resample
-          self.MakeDiff      = self.core.std.MakeDiff
-          self.MergeDiff     = self.core.std.MergeDiff
-          self.AddBorders    = self.core.std.AddBorders
-          self.Crop          = self.core.std.CropRel
-          self.Expr          = self.core.std.Expr
-          self.Median        = self.core.std.Median
-          self.Merge         = self.core.std.Merge
-          self.Convolution   = self.core.std.Convolution
-          self.Transpose     = self.core.std.Transpose
-          self.ShufflePlanes = self.core.std.ShufflePlanes
-          self.SelectEvery   = self.core.std.SelectEvery
-          self.SetFieldBased = self.core.std.SetFieldBased
+          self.RGB2OPP       = vs.core.bm3d.RGB2OPP
+          self.OPP2RGB       = vs.core.bm3d.OPP2RGB
+          self.KNLMeansCL    = vs.core.knlm.KNLMeansCL
+          self.NNEDI         = vs.core.nnedi3.nnedi3
+          self.FQSharp       = vs.core.vcfreq.Sharp
+          self.Resample      = vs.core.fmtc.resample
+          self.MakeDiff      = vs.core.std.MakeDiff
+          self.MergeDiff     = vs.core.std.MergeDiff
+          self.AddBorders    = vs.core.std.AddBorders
+          self.Crop          = vs.core.std.CropRel
+          self.Expr          = vs.core.std.Expr
+          self.Median        = vs.core.std.Median
+          self.Merge         = vs.core.std.Merge
+          self.Convolution   = vs.core.std.Convolution
+          self.Transpose     = vs.core.std.Transpose
+          self.ShufflePlanes = vs.core.std.ShufflePlanes
+          self.SelectEvery   = vs.core.std.SelectEvery
+          self.SetFieldBased = vs.core.std.SetFieldBased
 
       def CutOff(self, low, hi, p):
           def inline(src):
