@@ -106,7 +106,7 @@ Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64, str
 ref = Plum.Basic(clip)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)])
 ```
-![](http://i.imgur.com/NDPXF8Z.png)
+![](http://i.imgur.com/Pn5G8lc.png)
 ![]()
 - B
 ```python
