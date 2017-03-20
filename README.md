@@ -121,4 +121,4 @@ ref = Plum.Basic(clip, strength=2.4)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=4.8)
 ```
 ![](http://i.imgur.com/dHQ4UTR.png)
-![]()
+![](http://i.imgur.com/k2mDW7v.png)
