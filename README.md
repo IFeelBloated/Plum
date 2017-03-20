@@ -117,8 +117,8 @@ clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=3.2
 ![](http://i.imgur.com/Naa9nKv.png)
 - C
 ```python
-ref = Plum.Basic(clip, strength=2.8)
-clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=4.1143)
+ref = Plum.Basic(clip, strength=1.1)
+clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=10.48)
 ```
 ![](http://i.imgur.com/dHQ4UTR.png)
 ![]()
