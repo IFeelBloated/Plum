@@ -110,15 +110,15 @@ clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)])
 ![](http://i.imgur.com/zr3nNN1.png)
 - B
 ```python
-ref = Plum.Basic(clip)
-clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], cutoff=8)
+ref = Plum.Basic(clip, strength=3.2)
+clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=3.2, cutoff=8)
 ```
 ![](http://i.imgur.com/qY6VnVG.png)
-![](http://i.imgur.com/90Bh02p.png)
+![]()
 - C
 ```python
 ref = Plum.Basic(clip, strength=2.4)
 clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=4.8)
 ```
-![](http://i.imgur.com/AMRJfw8.png)
-![](http://i.imgur.com/U2lo67M.png)
+![]()
+![]()
