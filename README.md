@@ -115,10 +115,10 @@ clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=3.2
 ```
 ![](http://i.imgur.com/qY6VnVG.png)
 ![](http://i.imgur.com/Naa9nKv.png)
-- C (faster processing without external subpixel interpolation)
+- C
 ```python
 ref = Plum.Basic(clip, strength=2.8)
-clip = Plum.Final([clip, ref], strength=4.1)
+clip = Plum.Final([clip, ref], [Plum.Super(clip), Plum.Super(ref)], strength=4.1, constants=[1.98, 1.272, 0.01])
 ```
 ![](http://i.imgur.com/dHQ4UTR.png)
 ![]()
