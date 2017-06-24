@@ -38,13 +38,13 @@ class get_core:
           self.SelectEvery   = vs.core.std.SelectEvery
           self.SetFieldBased = vs.core.std.SetFieldBased
 
-      def CutOff(self, low, hi, p):
-          def inline(src):
+      def CutOff(self, low, hi, p, margin):
+          def inline(src, p):
               upsmp          = self.Resample(src, src.width*2, src.height*2, kernel="gauss", a1=100, **fmtc_args)
               clip           = self.Resample(upsmp, src.width, src.height, kernel="gauss", a1=p, **fmtc_args)
               return clip
-          hif                = self.MakeDiff(hi, inline(hi))
-          clip               = self.MergeDiff(inline(low), hif)
+          hif                = self.MakeDiff(hi, inline(hi, p+margin))
+          clip               = self.MergeDiff(inline(low, p), hif)
           return clip
 
       def Pad(self, src, left, right, top, bottom):
@@ -56,7 +56,7 @@ class get_core:
       def Deconvolution(self, src, radius, wn, fr, scale):
           src                = self.Pad(src, radius+fr, radius+fr, radius+fr, radius+fr)
           sharp              = self.FQSharp(src, x=radius, y=radius, wn=wn, fr=fr, scale=scale, **deconvolution_args)
-          sharp              = self.CutOff(src, sharp, 1)
+          sharp              = self.CutOff(src, sharp, 1, 0)
           clip               = self.Crop(sharp, radius+fr, radius+fr, radius+fr, radius+fr)
           return clip
 
@@ -118,7 +118,7 @@ class internal:
               dif            = core.MakeDiff(sharp, ref)
               dif            = core.Resample(dif, src.width, src.height, sx=-0.5, sy=-0.5, kernel="gauss", a1=100)
               sharp          = core.MergeDiff(src, dif)
-              sharp          = core.CutOff(src, sharp, cutoff_array[0])
+              sharp          = core.CutOff(src, sharp, cutoff_array[0], 0)
               local_error    = core.NLErrors(src, radius, h[1], src)
               local_limit    = core.MergeDiff(src, core.MakeDiff(src, local_error))
               limited        = core.Expr([sharp, local_limit, src], ["x z - abs y z - abs > y x ?"])
@@ -131,11 +131,11 @@ class internal:
              sharp_ceil      = inline(sharp)
              sharp           = core.Merge(sharp, sharp_ceil, strength - strength_floor)
           sharp_nr           = core.NLErrors(sharp, a, h[2], sharp)
-          clip               = core.CutOff(sharp, sharp_nr, cutoff_array[1])
+          clip               = core.CutOff(sharp, sharp_nr, cutoff_array[1], 0)
           h.pop()
           return clip
 
-      def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff):
+      def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff, freq_margin):
           constant           = 0.0009948813682897925944723492342
           me_sad             = constant * math.pow(sad, 2.0) * math.log(1.0 + 1.0 / (constant * sad))
           expression         = "{x} {y} - abs {lstr} / 1 {pstr} / pow {sstr} * {x} {y} - {x} {y} - abs 0.001 + / * {x} {y} - 2 pow {x} {y} - 2 pow {ldmp} + / * 256 / y +".format(lstr=constants[0], pstr=constants[1], sstr=strength, ldmp=constants[2], x="x 256 *", y="y 256 *")
@@ -167,7 +167,7 @@ class internal:
           averaged           = core.MergeDiff(src[0], averaged_dif)
           clamped            = core.Clamp(averaged, bright_limit, dark_limit, 0.0, 0.0)
           amplified          = core.Expr([clamped, src[0]], expression)
-          clip               = core.CutOff(src[0], amplified, cutoff)
+          clip               = core.CutOff(src[0], amplified, cutoff, freq_margin)
           super.pop()
           return clip
 
@@ -191,7 +191,7 @@ def Super(src, pel=4):
     del core
     return clip
 
-def Basic(src, strength=6.4, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28, cutoff=32):
+def Basic(src, strength=3.20, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28, cutoff=24):
     if not isinstance(src, vs.VideoNode):
        raise TypeError("Plum.Basic: src has to be a video clip!")
     elif src.format.sample_type != vs.FLOAT or src.format.bits_per_sample < 32:
@@ -234,7 +234,7 @@ def Basic(src, strength=6.4, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28,
     del core
     return clip
 
-def Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64, strength=1.80, constants=[1.49, 1.272, None], cutoff=24):
+def Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64, strength=3.20, constants=[1.49, 1.272, None], cutoff=12, freq_margin=20):
     if not isinstance(src, list):
        raise TypeError("Plum.Final: src has to be an array!")
     elif len(src) != 2:
@@ -288,6 +288,10 @@ def Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64,
        raise TypeError("Plum.Final: cutoff has to be an integer!")
     elif cutoff < 1 or cutoff > 100:
        raise RuntimeError("Plum.Final: cutoff must fall in (0, 100]!")
+    if not isinstance(freq_margin, int):
+       raise TypeError("Plum.Final: freq_margin has to be an integer!")
+    elif freq_margin < 0 or freq_margin > 100-cutoff:
+       raise RuntimeError("Plum.Final: freq_margin must fall in [0, 100-cutoff]!")
     constants[2]             = strength + 0.1 if constants[2] is None else constants[2]
     core                     = get_core()
     for i in range(2):
@@ -299,7 +303,7 @@ def Final(src, super=[None, None], radius=6, pel=4, sad=400.0, flexibility=0.64,
     if colorspace != vs.GRAY:
        src_color             = src[0]
        src[0]                = core.ShufflePlanes(src[0], 0, vs.GRAY)
-    clip                     = internal.final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff)
+    clip                     = internal.final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff, freq_margin)
     if colorspace != vs.GRAY:
        clip                  = core.ShufflePlanes([clip, src_color], [0, 1, 2], vs.YUV)
     if colorspace == vs.RGB:
