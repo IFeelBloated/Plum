@@ -111,11 +111,11 @@ class internal:
           return clip
 
       def basic(core, src, strength, a, h, radius, wn, scale, cutoff):
-          c1                 = 0.0980468750214585389567894354907
-          c2                 = 0.0124360171036224062543798508968
-          h                 += [c1 * h[1] * strength * (1.0 - math.exp(-1.0 / (c1 * strength)))]
+          #c1                 = 0.0980468750214585389567894354907
+          #c2                 = 0.0124360171036224062543798508968
+          #h                 += [c1 * h[1] * strength * (1.0 - math.exp(-1.0 / (c1 * strength)))]
           cutoff_array       = [cutoff]
-          cutoff_array      += [int(max(1.0, c2 * math.pow(cutoff, 2.0) * math.log(1.0 + 1.0 / (c2 * cutoff))) + 0.5)]
+          #cutoff_array      += [int(max(1.0, c2 * math.pow(cutoff, 2.0) * math.log(1.0 + 1.0 / (c2 * cutoff))) + 0.5)]
           strength_floor     = math.floor(strength)
           strength_ceil      = math.ceil(strength)
 
@@ -159,8 +159,8 @@ class internal:
           if strength_floor != strength_ceil:
              sharp_ceil      = inline(sharp)
              sharp           = core.Merge(sharp, sharp_ceil, strength - strength_floor)
-          sharp_nr           = core.NLErrors(sharp, a, h[2], sharp)
-          clip               = core.CutOff(sharp, sharp_nr, cutoff_array[1], 0)
+          #sharp_nr           = core.NLErrors(sharp, a, h[2], sharp)
+          clip               = sharp#core.CutOff(sharp, sharp_nr, cutoff_array[1], 0)
 
 
           #dif                = core.MakeDiff(clip, src)
@@ -168,7 +168,7 @@ class internal:
           #clip               = core.MergeDiff(src, dif)
 
 
-          h.pop()
+          #h.pop()
           return clip
 
       def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff, freq_margin):
