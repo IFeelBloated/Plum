@@ -90,18 +90,6 @@ class get_core:
           clip               = self.Expr([src, bright_limit, dark_limit], "x y {os} + > y {os} + x ? z {us} - < z {us} - x ?".format(os=overshoot, us=undershoot))
           return clip
 
-      #def XYClosest(self, src1, src2, ref):
-          #clip               = self.Expr([src1, src2, ref], "x z - abs y z - abs > y x ?")
-          #return clip
-
-
-      def NLMeans(self, src, a, s, h, rclip):
-          pad                = self.AddBorders(src, a+s, a+s, a+s, a+s)
-          rclip              = self.AddBorders(rclip, a+s, a+s, a+s, a+s) if rclip is not None else None
-          nlm                = self.KNLMeansCL(pad, d=0, a=a, s=s, h=h, rclip=rclip)
-          clip               = self.Crop(nlm, a+s, a+s, a+s, a+s)
-          return clip
-
 class internal:
       def super(core, src, pel):
           src                = core.Pad(src, 128, 128, 128, 128)
@@ -111,47 +99,21 @@ class internal:
           return clip
 
       def basic(core, src, strength, a, h, radius, wn, scale, cutoff):
-          #c1                 = 0.0980468750214585389567894354907
-          #c2                 = 0.0124360171036224062543798508968
-          #h                 += [c1 * h[1] * strength * (1.0 - math.exp(-1.0 / (c1 * strength)))]
-          cutoff_array       = [cutoff]
-          #cutoff_array      += [int(max(1.0, c2 * math.pow(cutoff, 2.0) * math.log(1.0 + 1.0 / (c2 * cutoff))) + 0.5)]
           strength_floor     = math.floor(strength)
           strength_ceil      = math.ceil(strength)
-
-
           def inline(src):
               sharp          = core.Deconvolution(src, radius, wn, int(a / 2 + 0.5), scale)
               sharp          = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(sharp, **nnedi_args)), **nnedi_args))
               ref            = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(src, **nnedi_args)), **nnedi_args))
               sharp          = core.NLErrors(ref, a, h[0], sharp)
               dif            = core.MakeDiff(sharp, ref)
-
-              #dif            = core.NLMeans(dif, 32, 4, 6.4, ref)
-
-
-
               dif            = core.Resample(dif, src.width, src.height, sx=-0.5, sy=-0.5, kernel="gauss", a1=100)
               sharp          = core.MergeDiff(src, dif)
-              sharp          = core.CutOff(src, sharp, cutoff_array[0], 0)
+              sharp          = core.CutOff(src, sharp, cutoff, 0)
               local_error    = core.NLErrors(src, radius, h[1], src)
               local_limit    = core.MergeDiff(src, core.MakeDiff(src, local_error))
               limited        = core.Expr([sharp, local_limit, src], ["x z - abs y z - abs > y x ?"])
-
-            
-              dif            = core.MakeDiff(limited, src)
-              dif            = core.NLMeans(dif, a, 4, 3.2, src)
-              limited        = core.MergeDiff(src, dif)
-
-
-
               clip           = core.Shrink(limited)
-
-
-
-
-
-
               return clip
           sharp              = src
           for i in range(strength_floor):
@@ -159,16 +121,7 @@ class internal:
           if strength_floor != strength_ceil:
              sharp_ceil      = inline(sharp)
              sharp           = core.Merge(sharp, sharp_ceil, strength - strength_floor)
-          #sharp_nr           = core.NLErrors(sharp, a, h[2], sharp)
-          clip               = sharp#core.CutOff(sharp, sharp_nr, cutoff_array[1], 0)
-
-
-          #dif                = core.MakeDiff(clip, src)
-          #dif                = core.NLMeans(dif, 32, 1, 3.2, src)
-          #clip               = core.MergeDiff(src, dif)
-
-
-          #h.pop()
+          clip               = sharp
           return clip
 
       def final(core, src, super, radius, pel, sad, flexibility, strength, constants, cutoff, freq_margin):
@@ -207,17 +160,6 @@ class internal:
 
           averaged_dif       = core.CutOff(averaged_dif_low, averaged_dif_hi, 4, 0)
 
-          #averaged_dif       = core.XYClosest(averaged_dif, src[1], blankdif)
-
-
-
-          #averaged_dif       = core.NLMeans(averaged_dif, 32, 1, 3.2, src[0])
-
-
-
-
-
-
           compensated        = core.MCompensate(src[0], superflex, vmulti_low, tr=radius, thsad=sad, **mcompensate_args)
 
 
@@ -253,7 +195,7 @@ def Super(src, pel=4):
     del core
     return clip
 
-def Basic(src, strength=3.20, a=32, h=[6.4, 64.0], radius=1, wn=0.48, scale=0.28, cutoff=24):
+def Basic(src, strength=3.20, a=32, h=[1.2, 64.0], radius=1, wn=0.64, scale=0.22, cutoff=24):
     if not isinstance(src, vs.VideoNode):
        raise TypeError("Plum.Basic: src has to be a video clip!")
     elif src.format.sample_type != vs.FLOAT or src.format.bits_per_sample < 32:
