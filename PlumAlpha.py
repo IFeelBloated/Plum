@@ -17,8 +17,7 @@ class get_core:
           self.MSuper        = vs.core.mvsf.Super
           self.MAnalyze      = mvmulti.Analyze
           self.MRecalculate  = mvmulti.Recalculate
-          self.MDegrainN     = mvmulti.DegrainN
-          self.MCompensate   = mvmulti.Compensate
+          self.MDegrainN     = mvmulti.DegrainN          self.MCompensate   = mvmulti.Compensate
           self.RGB2OPP       = vs.core.bm3d.RGB2OPP
           self.OPP2RGB       = vs.core.bm3d.OPP2RGB
           self.KNLMeansCL    = vs.core.knlm.KNLMeansCL
@@ -53,7 +52,8 @@ class get_core:
           clip               = self.Resample(src, w+left+right, h+top+bottom, -left, -top, w+left+right, h+top+bottom, kernel="point", **fmtc_args)
           return clip
 
-      def Deconvolution(self, src, radius, wn, fr, scale):
+      def Deconvolution(self, src, radius, wn, scale):
+          fr                 = 25  
           src                = self.Pad(src, radius+fr, radius+fr, radius+fr, radius+fr)
           sharp              = self.FQSharp(src, x=radius, y=radius, wn=wn, fr=fr, scale=scale, **deconvolution_args)
           sharp              = self.CutOff(src, sharp, 1, 0)
@@ -102,7 +102,7 @@ class internal:
           strength_floor     = math.floor(strength)
           strength_ceil      = math.ceil(strength)
           def inline(src):
-              sharp          = core.Deconvolution(src, radius, wn, int(a / 2 + 0.5), scale)
+              sharp          = core.Deconvolution(src, radius, wn, scale)
               sharp          = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(sharp, **nnedi_args)), **nnedi_args))
               ref            = core.Transpose(core.NNEDI(core.Transpose(core.NNEDI(src, **nnedi_args)), **nnedi_args))
               sharp          = core.NLErrors(ref, a, h[0], sharp)
