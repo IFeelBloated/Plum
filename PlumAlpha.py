@@ -17,7 +17,8 @@ class get_core:
           self.MSuper        = vs.core.mvsf.Super
           self.MAnalyze      = mvmulti.Analyze
           self.MRecalculate  = mvmulti.Recalculate
-          self.MDegrainN     = mvmulti.DegrainN          self.MCompensate   = mvmulti.Compensate
+          self.MDegrainN     = mvmulti.DegrainN          
+          self.MCompensate   = mvmulti.Compensate
           self.RGB2OPP       = vs.core.bm3d.RGB2OPP
           self.OPP2RGB       = vs.core.bm3d.OPP2RGB
           self.KNLMeansCL    = vs.core.knlm.KNLMeansCL
