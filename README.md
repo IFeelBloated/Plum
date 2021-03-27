@@ -1,5 +1,5 @@
-# Plum
-©2017 IFeelBloated, Plum Python Module for VapourSynth
+﻿# Plum
+©2021 IFeelBloated, Plum Python Module for VapourSynth
 
 ## License
 LGPL v3.0
@@ -12,7 +12,7 @@ Plum is a sharpening/blind deconvolution suite with certain advanced features li
 - [KNLMeansCL](https://github.com/Khanattila/KNLMeansCL)
 - [BM3D](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-BM3D)
 - [FMTConv](https://github.com/EleonoreMizo/fmtconv)
-- [VCFreq](http://www.avisynth.nl/users/vcmohan/vcfreq/vcfreq.html)
+- [VCM](http://www.avisynth.nl/users/vcmohan/vcm/vcm.html)
 - [MVTools (floating point ver)](https://github.com/IFeelBloated/vapoursynth-mvtools-sf/tree/master)
 
 ## Function List

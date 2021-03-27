@@ -1,13 +1,12 @@
 import vapoursynth as vs
-import mvmulti
 import math
 
 fmtc_args                    = dict(fulls=True, fulld=True)
 msuper_args                  = dict(hpad=0, vpad=0, sharp=2, levels=0, chroma=False)
 manalyze_args                = dict(search=3, truemotion=False, trymany=True, levels=0, badrange=-24, divide=0, dct=0, chroma=False)
 mrecalculate_args            = dict(truemotion=False, search=3, smooth=1, divide=0, dct=0, chroma=False)
-mdegrain_args                = dict(thsad=10000.0, plane=0, thscd1=16711680.0, thscd2=255.0)
-mcompensate_args             = dict(thscd1=16711680.0, thscd2=255.0)
+mdegrain_args                = dict(thsad=10000.0, plane=0, thscd1=16320.0, thscd2=255.0)
+mcompensate_args             = dict(thscd1=16320.0, thscd2=255.0)
 convolution_args             = dict(matrix=[1, 2, 1, 2, 4, 2, 1, 2, 1])
 deconvolution_args           = dict(line=0)
 nnedi_args                   = dict(field=1, dh=True, nns=4, qual=2, etype=1, nsize=0)
@@ -15,15 +14,15 @@ nnedi_args                   = dict(field=1, dh=True, nns=4, qual=2, etype=1, ns
 class get_core:
       def __init__(self):
           self.MSuper        = vs.core.mvsf.Super
-          self.MAnalyze      = mvmulti.Analyze
-          self.MRecalculate  = mvmulti.Recalculate
-          self.MDegrainN     = mvmulti.DegrainN
-          self.MCompensate   = mvmulti.Compensate
+          self.MAnalyze      = vs.core.mvsf.Analyze
+          self.MRecalculate  = vs.core.mvsf.Recalculate
+          self.MDegrainN     = vs.core.mvsf.Degrain        
+          self.MCompensate   = vs.core.mvsf.Compensate
           self.RGB2OPP       = vs.core.bm3d.RGB2OPP
           self.OPP2RGB       = vs.core.bm3d.OPP2RGB
           self.KNLMeansCL    = vs.core.knlm.KNLMeansCL
           self.NNEDI         = vs.core.nnedi3.nnedi3
-          self.FQSharp       = vs.core.vcfreq.Sharp
+          self.FQSharp       = vs.core.vcm.fqSharp
           self.Resample      = vs.core.fmtc.resample
           self.MakeDiff      = vs.core.std.MakeDiff
           self.MergeDiff     = vs.core.std.MergeDiff
@@ -149,16 +148,16 @@ class internal:
           supersearch        = core.MSuper(src[0], pelclip=super[0], rfilter=4, pel=pel, **msuper_args)
           superdif           = core.MSuper(src[1], pelclip=super[1], rfilter=2, pel=pel, **msuper_args)
           superflex          = core.MSuper(src[2], pelclip=super[2], rfilter=2, pel=pel, **msuper_args)
-          vmulti             = core.MAnalyze(supersearch, tr=radius, overlap=64, blksize=128, **manalyze_args)
-          vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=32, blksize=64, thsad=me_sad, **mrecalculate_args)
-          vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=16, blksize=32, thsad=me_sad, **mrecalculate_args)
-          vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=8, blksize=16, thsad=me_sad, **mrecalculate_args)
-          vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=4, blksize=8, thsad=me_sad, **mrecalculate_args)
-          vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=2, blksize=4, thsad=me_sad, **mrecalculate_args)
-          vmulti             = core.MRecalculate(supersearch, vmulti, tr=radius, overlap=1, blksize=2, thsad=me_sad, **mrecalculate_args)
-          averaged_dif       = core.MDegrainN(blankdif, superdif, vmulti, tr=radius, **mdegrain_args)
+          vmulti             = core.MAnalyze(supersearch, radius=radius, overlap=64, blksize=128, **manalyze_args)
+          vmulti             = core.MRecalculate(supersearch, vmulti, overlap=32, blksize=64, thsad=me_sad, **mrecalculate_args)
+          vmulti             = core.MRecalculate(supersearch, vmulti, overlap=16, blksize=32, thsad=me_sad, **mrecalculate_args)
+          vmulti             = core.MRecalculate(supersearch, vmulti, overlap=8, blksize=16, thsad=me_sad, **mrecalculate_args)
+          vmulti             = core.MRecalculate(supersearch, vmulti, overlap=4, blksize=8, thsad=me_sad, **mrecalculate_args)
+          vmulti             = core.MRecalculate(supersearch, vmulti, overlap=2, blksize=4, thsad=me_sad, **mrecalculate_args)
+          vmulti             = core.MRecalculate(supersearch, vmulti, overlap=1, blksize=2, thsad=me_sad, **mrecalculate_args)
+          averaged_dif       = core.MDegrainN(blankdif, superdif, vmulti, **mdegrain_args)
           averaged_dif       = core.XYClosest(averaged_dif, src[1], blankdif)
-          compensated        = core.MCompensate(src[0], superflex, vmulti, tr=radius, thsad=sad, **mcompensate_args)
+          compensated        = core.MCompensate(src[0], superflex, vmulti, thsad=sad, **mcompensate_args)
           src[0]             = core.Crop(src[0], 128, 128, 128, 128)
           averaged_dif       = core.Crop(averaged_dif, 128, 128, 128, 128)
           compensated        = core.Crop(compensated, 128, 128, 128, 128)
